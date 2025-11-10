@@ -215,7 +215,8 @@ smartjob/
 │   │   │       ├── dto/             # Data Transfer Objects
 │   │   │       ├── exceptions/      # Excepciones personalizadas
 │   │   │       ├── models/          # Modelos de request/response
-│   │   │       └── services/        # Lógica de negocio
+│   │   │       ├── services/        # Lógica de negocio
+│   │   │       └── util/            # Utilidades (Exception Handlers)
 │   │   └── resources/
 │   │       ├── application.properties
 │   │       ├── schema.sql           # Esquema de base de datos
@@ -226,9 +227,255 @@ smartjob/
 │               ├── controller/      # Tests de controladores
 │               └── services/        # Tests de servicios
 ├── build.gradle
+├── gradle.properties               # Configuración de Java 17
 ├── settings.gradle
 └── README.md
 ```
+
+## 📊 Diagramas de Arquitectura
+
+### Diagrama de Componentes y Flujo de Datos
+
+```mermaid
+graph TB
+    subgraph Cliente
+        CLIENT[Cliente HTTP]
+    end
+
+    subgraph Presentación
+        CONTROLLER[UserController<br/>RestController<br/>Tag: Users]
+        EXCEPTION_HANDLER[UserExceptionHandlerController<br/>RestControllerAdvice]
+    end
+
+    subgraph Servicio
+        SERVICE_IF[UserService<br/>Interface]
+        SERVICE_IMPL[UserServiceImpl<br/>Service]
+    end
+
+    subgraph AccesoDatos
+        DAO[UserDao<br/>JpaRepository]
+        MAPPER[UserMapper<br/>MapStruct]
+    end
+
+    subgraph Entidades
+        USER_ENTITY[User Entity<br/>Entity]
+        PHONE_ENTITY[Phone Entity<br/>Entity]
+    end
+
+    subgraph Modelos
+        USER_REQUEST[UserRequest<br/>Schema]
+        USER_RESPONSE[UserResponse<br/>Schema]
+        PHONE_DTO[PhoneDto<br/>Schema]
+    end
+
+    subgraph Excepciones
+        SMART_JOB_EX[SmartJobException]
+        EXISTENT_ENTITY_EX[ExistentEntityException]
+    end
+
+    subgraph BaseDatos
+        DB[(HSQLDB<br/>In-Memory)]
+        USERS_TABLE[(USERS Table)]
+        PHONES_TABLE[(PHONES Table)]
+    end
+
+    subgraph Documentación
+        SWAGGER[Swagger UI<br/>SpringDoc OpenAPI 2.6.0]
+        API_DOCS[API Docs<br/>/v3/api-docs]
+    end
+
+    CLIENT -->|POST /user/api/v1| CONTROLLER
+    CONTROLLER -->|createUser| SERVICE_IF
+    SERVICE_IF --> SERVICE_IMPL
+    SERVICE_IMPL -->|userDtoToUserEntitie| MAPPER
+    SERVICE_IMPL -->|save| DAO
+    SERVICE_IMPL -->|validateIfMailExist| DAO
+    MAPPER --> USER_REQUEST
+    MAPPER --> USER_ENTITY
+    MAPPER --> USER_RESPONSE
+    DAO --> USER_ENTITY
+    USER_ENTITY -.->|ManyToOne| PHONE_ENTITY
+    DAO -->|JPA| DB
+    DB --> USERS_TABLE
+    DB --> PHONES_TABLE
+    CONTROLLER -.->|throws| EXCEPTION_HANDLER
+    SERVICE_IMPL -.->|throws| EXISTENT_ENTITY_EX
+    SERVICE_IMPL -.->|throws| SMART_JOB_EX
+    EXCEPTION_HANDLER -.->|handles| SMART_JOB_EX
+    EXCEPTION_HANDLER -.->|handles| EXISTENT_ENTITY_EX
+    USER_REQUEST --> PHONE_DTO
+    SWAGGER -->|documenta| CONTROLLER
+    API_DOCS -->|genera| SWAGGER
+
+    style CONTROLLER fill:#e1f5ff
+    style SERVICE_IMPL fill:#fff4e1
+    style DAO fill:#e8f5e9
+    style MAPPER fill:#f3e5f5
+    style USER_ENTITY fill:#fff9c4
+    style PHONE_ENTITY fill:#fff9c4
+    style DB fill:#ffebee
+    style SWAGGER fill:#e3f2fd
+    style EXCEPTION_HANDLER fill:#fce4ec
+```
+
+### Diagrama de Entidades y Relaciones
+
+```mermaid
+erDiagram
+    USERS ||--o{ PHONES : "tiene"
+    
+    USERS {
+        UUID id PK
+        string name
+        string email UK
+        string password
+        timestamp created
+        timestamp modified
+        timestamp lastLogin
+        boolean isactive
+        UUID token
+    }
+    
+    PHONES {
+        bigint id PK
+        UUID user_id FK
+        string number
+        string city_code
+        string country_code
+    }
+```
+
+### Diagrama de Flujo de Proceso - Crear Usuario
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller as UserController
+    participant ExceptionHandler as UserExceptionHandlerController
+    participant Service as UserServiceImpl
+    participant Mapper as UserMapper
+    participant DAO as UserDao
+    participant DB as HSQLDB
+
+    Client->>Controller: POST /user/api/v1<br/>(UserRequest)
+    Controller->>Controller: @Valid validation
+    Controller->>Service: createUser(UserRequest)
+    Service->>DAO: findByEmail(email)
+    DAO->>DB: SELECT * FROM USERS WHERE email = ?
+    DB-->>DAO: Result
+    alt Email existe
+        DAO-->>Service: Optional<User>
+        Service-->>Service: throw ExistentEntityException
+        Service-->>ExceptionHandler: ExistentEntityException
+        ExceptionHandler-->>Controller: HTTP 500 (SmartJobException)
+        Controller-->>Client: HTTP 500 Error
+    else Email no existe
+        Service->>Mapper: userDtoToUserEntitie(UserRequest)
+        Mapper-->>Service: User Entity
+        Service->>Service: setToken(UUID.randomUUID())
+        Service->>Service: setCreated(Instant.now())
+        Service->>Service: setIsactive(true)
+        Service->>DAO: save(User)
+        DAO->>DB: INSERT INTO USERS
+        DB-->>DAO: User saved
+        DAO-->>Service: User Entity (con ID)
+        Service->>Mapper: userEntititeToUserDto(User)
+        Mapper-->>Service: UserResponse
+        Service-->>Controller: UserResponse
+        Controller-->>Client: HTTP 200 OK<br/>(UserResponse)
+    end
+```
+
+### Arquitectura en Capas
+
+```mermaid
+graph LR
+    subgraph "Layer 1: Presentation"
+        A[UserController<br/>RestController]
+        A1[UserExceptionHandlerController<br/>RestControllerAdvice]
+        A2[Swagger UI<br/>SpringDoc OpenAPI]
+    end
+    
+    subgraph "Layer 2: Business Logic"
+        B[UserService<br/>UserServiceImpl]
+    end
+    
+    subgraph "Layer 3: Data Access"
+        C[UserDao<br/>JpaRepository]
+        D[UserMapper<br/>MapStruct]
+    end
+    
+    subgraph "Layer 4: Persistence"
+        E[User Entity]
+        F[Phone Entity]
+        G[HSQLDB]
+    end
+    
+    A --> B
+    A1 -.->|handles exceptions| A
+    A2 -->|documents| A
+    B --> C
+    B --> D
+    C --> E
+    D --> E
+    E --> F
+    C --> G
+    
+    style A fill:#4CAF50
+    style A1 fill:#9C27B0
+    style A2 fill:#2196F3
+    style B fill:#2196F3
+    style C fill:#FF9800
+    style D fill:#9C27B0
+    style E fill:#F44336
+    style F fill:#F44336
+    style G fill:#607D8B
+```
+
+### Stack Tecnológico Actualizado
+
+- **Framework**: Spring Boot 3.3.5
+- **Java**: 17 (OpenJDK)
+- **Base de Datos**: HSQLDB (In-Memory)
+- **ORM**: Spring Data JPA / Hibernate
+- **Mapping**: MapStruct 1.5.3
+- **Validación**: Jakarta Validation
+- **Build Tool**: Gradle 8.14.3
+- **Lombok**: 1.18.30
+- **Documentación API**: SpringDoc OpenAPI (Swagger) 2.6.0
+- **Testing**: JUnit 5, Mockito
+- **Gradle Java Home**: Configurado en `gradle.properties`
+
+### Descripción de Componentes
+
+#### Controller Layer
+- **UserController**: Maneja las peticiones HTTP REST, valida los datos de entrada y devuelve respuestas JSON. Documentado con Swagger/OpenAPI.
+- **UserExceptionHandlerController**: Maneja las excepciones globales de la aplicación y las convierte en respuestas HTTP apropiadas.
+
+#### Service Layer
+- **UserService**: Interfaz que define el contrato del servicio.
+- **UserServiceImpl**: Implementación de la lógica de negocio para crear usuarios, incluyendo validación de email único.
+
+#### Data Access Layer
+- **UserDao**: Repositorio JPA que extiende JpaRepository para operaciones CRUD y consultas personalizadas.
+- **UserMapper**: Interfaz MapStruct que mapea entre DTOs y entidades automáticamente.
+
+#### Entity Layer
+- **User**: Entidad JPA que representa la tabla USERS.
+- **Phone**: Entidad JPA que representa la tabla PHONES con relación ManyToOne con User.
+
+#### Model/DTO Layer
+- **UserRequest**: Modelo de entrada para crear usuarios con validaciones.
+- **UserResponse**: Modelo de salida con información del usuario creado.
+- **PhoneDto**: DTO para información de teléfonos.
+
+#### Exception Layer
+- **SmartJobException**: Excepción personalizada base para errores generales.
+- **ExistentEntityException**: Excepción para entidades que ya existen (email duplicado).
+
+#### Configuration Layer
+- **OpenApiConfig**: Configuración de Swagger/OpenAPI con información de la API.
+- **gradle.properties**: Configuración de Java 17 para Gradle.
 
 ## 🔧 Configuración
 
