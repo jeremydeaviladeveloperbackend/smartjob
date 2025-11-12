@@ -7,8 +7,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.smartjob.dao.PhoneDao;
 import org.smartjob.dao.UserDao;
+import org.smartjob.dao.entities.Phone;
 import org.smartjob.dao.entities.User;
+import org.smartjob.dao.mapper.PhoneMapper;
 import org.smartjob.dao.mapper.UserMapper;
 import org.smartjob.dto.PhoneDto;
 import org.smartjob.exceptions.SmartJobException;
@@ -34,7 +37,13 @@ class UserServiceImplTest {
     private UserDao userDao;
 
     @Mock
+    private PhoneDao phoneDao;
+
+    @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private PhoneMapper phoneMapper;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -58,8 +67,10 @@ class UserServiceImplTest {
         
         when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
-        when(userDao.save(any(User.class))).thenReturn(savedUser);
+        when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
+        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
+        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         UserResponse result = userService.createUser(userRequest);
@@ -70,9 +81,11 @@ class UserServiceImplTest {
         assertEquals(userResponse.getToken(), result.getToken());
         
         verify(userDao, times(1)).findByEmail(userRequest.getEmail());
-        verify(userDao, times(1)).save(any(User.class));
+        verify(userDao, times(1)).saveAndFlush(any(User.class));
         verify(userMapper, times(1)).userDtoToUserEntitie(userRequest);
         verify(userMapper, times(1)).userEntititeToUserDto(savedUser);
+        verify(phoneMapper, times(userRequest.getPhone().size())).phoneDtoToPhoneEntitie(any(PhoneDto.class));
+        verify(phoneDao, times(userRequest.getPhone().size())).save(any(Phone.class));
     }
 
     @Test
@@ -82,22 +95,26 @@ class UserServiceImplTest {
         User userToSave = createUserEntity();
         when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userToSave);
-        when(userDao.save(any(User.class))).thenAnswer(invocation -> {
+        when(userDao.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             assertNotNull(user.getToken());
             assertTrue(user.getIsactive());
             assertNotNull(user.getCreated());
             assertNotNull(user.getModified());
             assertNotNull(user.getLastLogin());
+            assertNotNull(user.getPassword());
+            assertNotEquals(userRequest.getPassword(), user.getPassword(), "La contraseña debe estar hasheada");
             return savedUser;
         });
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
+        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
+        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
 
         
-        verify(userDao, times(1)).save(any(User.class));
+        verify(userDao, times(1)).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -118,9 +135,10 @@ class UserServiceImplTest {
         assertTrue(message.contains("ya se encuentra registrado"), 
                 "El mensaje debe contener 'ya se encuentra registrado'");
         verify(userDao, times(1)).findByEmail(userRequest.getEmail());
-        verify(userDao, never()).save(any(User.class));
+        verify(userDao, never()).saveAndFlush(any(User.class));
         verify(userMapper, never()).userDtoToUserEntitie(any(UserRequest.class));
         verify(userMapper, never()).userEntititeToUserDto(any(User.class));
+        verify(phoneDao, never()).save(any(Phone.class));
     }
 
     @Test
@@ -129,7 +147,7 @@ class UserServiceImplTest {
         
         when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
-        when(userDao.save(any(User.class))).thenThrow(new RuntimeException("Database error"));
+        when(userDao.saveAndFlush(any(User.class))).thenThrow(new RuntimeException("Database error"));
 
        
         assertThrows(
@@ -138,7 +156,7 @@ class UserServiceImplTest {
         );
 
         verify(userDao, times(1)).findByEmail(userRequest.getEmail());
-        verify(userDao, times(1)).save(any(User.class));
+        verify(userDao, times(1)).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -159,7 +177,7 @@ class UserServiceImplTest {
                 "El mensaje debe contener 'ya se encuentra registrado'");
         verify(userDao, times(1)).findByEmail(userRequest.getEmail());
         verify(userMapper, never()).userDtoToUserEntitie(any(UserRequest.class));
-        verify(userDao, never()).save(any(User.class));
+        verify(userDao, never()).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -170,15 +188,17 @@ class UserServiceImplTest {
         userRequest.setEmail(email);
         when(userDao.findByEmail(email)).thenReturn(Optional.empty());
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
-        when(userDao.save(any(User.class))).thenReturn(savedUser);
+        when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
+        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
+        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
 
         
         verify(userDao, times(1)).findByEmail(email);
-        verify(userDao, times(1)).save(any(User.class));
+        verify(userDao, times(1)).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -187,8 +207,10 @@ class UserServiceImplTest {
         
         when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
-        when(userDao.save(any(User.class))).thenReturn(savedUser);
+        when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
+        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
+        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
@@ -203,14 +225,58 @@ class UserServiceImplTest {
         
         when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
-        when(userDao.save(any(User.class))).thenReturn(savedUser);
+        when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
+        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
+        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
 
         
         verify(userMapper, times(1)).userEntititeToUserDto(savedUser);
+    }
+
+    @Test
+    @DisplayName("Debería guardar teléfonos asociados al usuario")
+    void shouldSavePhonesAssociatedToUser() {
+        
+        when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
+        when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
+        when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
+        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
+        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
+
+        
+        userService.createUser(userRequest);
+
+        
+        verify(phoneMapper, times(userRequest.getPhone().size())).phoneDtoToPhoneEntitie(any(PhoneDto.class));
+        verify(phoneDao, times(userRequest.getPhone().size())).save(any(Phone.class));
+    }
+
+    @Test
+    @DisplayName("Debería crear usuario sin teléfonos cuando la lista está vacía")
+    void shouldCreateUserWithoutPhonesWhenListIsEmpty() {
+        
+        UserRequest requestWithoutPhones = createValidUserRequest();
+        requestWithoutPhones.setPhone(new ArrayList<>());
+        
+        when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
+        when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
+        when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
+
+        
+        UserResponse result = userService.createUser(requestWithoutPhones);
+
+        
+        assertNotNull(result);
+        verify(userDao, times(1)).findByEmail(requestWithoutPhones.getEmail());
+        verify(userDao, times(1)).saveAndFlush(any(User.class));
+        verify(phoneMapper, never()).phoneDtoToPhoneEntitie(any(PhoneDto.class));
+        verify(phoneDao, never()).save(any(Phone.class));
     }
 
     private UserRequest createValidUserRequest() {
@@ -262,6 +328,16 @@ class UserServiceImplTest {
         response.setLastLogin("2024-01-01T00:00:00Z");
         response.setIsActive("true");
         return response;
+    }
+
+    private Phone createPhoneEntity() {
+        Phone phone = new Phone();
+        phone.setId(1L);
+        phone.setNumber("123456789");
+        phone.setCitycode("1");
+        phone.setCountrycode("57");
+        phone.setUser(savedUser);
+        return phone;
     }
 }
 

@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 /**
  * DTO (Data Transfer Object) para información de teléfonos.
  * <p>
@@ -26,4 +28,8 @@ public class PhoneDto {
     
     @Schema(description = "Código de país", example = "57")
     private String countrycode;
+
+    @Schema(description = "Identificador del usuario propietario del teléfono", example = "123e4567-e89b-12d3-a456-426614174000", hidden = true)
+    private UUID userId;
+
 }

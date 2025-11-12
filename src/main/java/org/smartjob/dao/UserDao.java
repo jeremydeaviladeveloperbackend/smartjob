@@ -1,9 +1,12 @@
 package org.smartjob.dao;
 
 import org.smartjob.dao.entities.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,4 +30,9 @@ public interface UserDao extends JpaRepository<User, UUID> {
      * @return Optional con el usuario si existe, vacío si no se encuentra
      */
     Optional<User> findByEmail(String email);
+
+    @EntityGraph(attributePaths = "phones")
+    List<User> findAll();
+
+
 }

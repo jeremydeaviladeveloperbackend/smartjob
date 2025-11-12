@@ -1,14 +1,20 @@
 package org.smartjob.services;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.smartjob.dao.PhoneDao;
 import org.smartjob.dao.UserDao;
+import org.smartjob.dao.entities.Phone;
 import org.smartjob.dao.entities.User;
+import org.smartjob.dao.mapper.PhoneMapper;
 import org.smartjob.dao.mapper.UserMapper;
+import org.smartjob.dto.PhoneDto;
 import org.smartjob.exceptions.ExistentEntityException;
 import org.smartjob.exceptions.SmartJobException;
 import org.smartjob.models.UserRequest;
 import org.smartjob.models.UserResponse;
+import org.smartjob.util.UtilitiesSmartJob;
 import org.springframework.stereotype.Service;
 
 import javax.validation.ValidationException;
@@ -32,7 +38,9 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserDao userDao;
+    private final PhoneDao phoneDao;
     private final UserMapper userMapper;
+    private final PhoneMapper phoneMapper;
 
     /**
      * {@inheritDoc}
@@ -47,6 +55,7 @@ public class UserServiceImpl implements UserService {
      * @throws SmartJobException si ocurre un error general
      */
     @Override
+//    @Transactional
     public UserResponse createUser(UserRequest userRequest) {
         try {
             log.debug("Iniciando creación de usuario para email: {}", userRequest.getEmail());
@@ -62,13 +71,27 @@ public class UserServiceImpl implements UserService {
             user.setToken(UUID.randomUUID());
             user.setCreated(Instant.now());
             user.setModified(Instant.now());
+            user.setPassword(UtilitiesSmartJob.hashPassword(userRequest.getPassword()));
+            user.setName(userRequest.getName());
+            user.setEmail(userRequest.getEmail());
             user.setLastLogin(user.getCreated());
             
-            // Persistir usuario
-            User savedUser = this.userDao.save(user);
+            User savedUser = this.userDao.saveAndFlush(user);
+
+            for (PhoneDto phone : userRequest.getPhone()) {
+                phone.setUserId(user.getId());
+                phone.setCitycode(phone.getCitycode());
+                phone.setCountrycode(phone.getCountrycode());
+                phone.setNumber(phone.getNumber());
+                var tmp = phoneMapper.phoneDtoToPhoneEntitie(phone);
+                User tmpUser = new User();
+                tmpUser.setId(savedUser.getId());
+                tmp.setUser(tmpUser);
+                phoneDao.save(tmp);
+            }
+
             log.debug("Usuario guardado con ID: {}", savedUser.getId());
-            
-            // Mapear entidad User a UserResponse
+
             UserResponse response = this.userMapper.userEntititeToUserDto(savedUser);
             
             log.info("Usuario creado exitosamente con ID: {}", response.getId());
