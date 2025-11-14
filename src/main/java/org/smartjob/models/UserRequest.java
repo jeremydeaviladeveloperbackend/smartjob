@@ -40,6 +40,7 @@ public class UserRequest {
     
     @Schema(description = "Lista de teléfonos asociados al usuario")
     @Valid
+    @NotEmpty(message = "phones no puede estar vacío")
     private List<PhoneDto> phones;
     
     /**
@@ -72,5 +73,6 @@ public class UserRequest {
             regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\|,.<>\\/?]).{8,20}$",
             message = "La contraseña debe tener entre 8-20 caracteres, e incluir al menos una mayúscula, una minúscula, un número y un símbolo."
     )
+    @NotEmpty(message = "password no puede estar vacía")
     private String password;
 }
