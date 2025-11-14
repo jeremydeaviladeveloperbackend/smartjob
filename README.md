@@ -34,9 +34,6 @@ Antes de ejecutar el proyecto, es necesario configurar Gradle para que use Java 
 **Crea o edita el archivo `gradle.properties` en la raíz del proyecto** y agrega la siguiente configuración:
 
 ```properties
-# Configuración de Java 17
-org.gradle.java.home=C:\\Program Files\\Java\\jdk-17
-
 # Habilitar toolchain de Java
 org.gradle.java.installations.auto-detect=true
 org.gradle.java.installations.auto-download=true
