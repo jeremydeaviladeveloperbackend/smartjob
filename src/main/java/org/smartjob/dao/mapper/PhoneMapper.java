@@ -1,6 +1,7 @@
 package org.smartjob.dao.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.smartjob.dao.entities.Phone;
 import org.smartjob.dao.entities.User;
 import org.smartjob.dto.PhoneDto;
@@ -27,5 +28,14 @@ public interface PhoneMapper {
      * @return Entidad Phone mapeada
      */
     Phone phoneDtoToPhoneEntitie(PhoneDto dto);
+
+    /**
+     * Convierte un Phone entity a un PhoneDto.
+     *
+     * @param phone Phone con los datos del teléfono
+     * @return Dto Phone mapeado
+     */
+    @Mapping(source = "user.id", target = "userId")
+    PhoneDto phoneToPhoneDto(Phone phone);
 
 }

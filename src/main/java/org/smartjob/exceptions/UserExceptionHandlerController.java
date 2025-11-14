@@ -1,11 +1,9 @@
-package org.smartjob.util;
+package org.smartjob.exceptions;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.smartjob.controller.UserController;
-import org.smartjob.exceptions.ExistentEntityException;
-import org.smartjob.exceptions.SmartJobException;
 import org.smartjob.models.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

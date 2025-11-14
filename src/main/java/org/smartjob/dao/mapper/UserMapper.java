@@ -1,6 +1,7 @@
 package org.smartjob.dao.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.smartjob.dao.entities.User;
 import org.smartjob.models.UserRequest;
 import org.smartjob.models.UserResponse;
@@ -15,7 +16,7 @@ import org.smartjob.models.UserResponse;
  * @author Jeremy De Avila
  * @version 1.0
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {PhoneMapper.class})
 public interface UserMapper {
 
     /**
@@ -32,5 +33,6 @@ public interface UserMapper {
      * @param entity Entidad User
      * @return UserResponse con los datos del usuario
      */
+    @Mapping(source = "isactive", target = "isActive")
     UserResponse userEntititeToUserDto(User entity);
 }

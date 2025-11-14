@@ -7,11 +7,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.smartjob.dao.PhoneDao;
 import org.smartjob.dao.UserDao;
 import org.smartjob.dao.entities.Phone;
 import org.smartjob.dao.entities.User;
-import org.smartjob.dao.mapper.PhoneMapper;
 import org.smartjob.dao.mapper.UserMapper;
 import org.smartjob.dto.PhoneDto;
 import org.smartjob.exceptions.SmartJobException;
@@ -37,13 +35,7 @@ class UserServiceImplTest {
     private UserDao userDao;
 
     @Mock
-    private PhoneDao phoneDao;
-
-    @Mock
     private UserMapper userMapper;
-
-    @Mock
-    private PhoneMapper phoneMapper;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -69,8 +61,6 @@ class UserServiceImplTest {
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
         when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
-        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
-        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         UserResponse result = userService.createUser(userRequest);
@@ -84,8 +74,6 @@ class UserServiceImplTest {
         verify(userDao, times(1)).saveAndFlush(any(User.class));
         verify(userMapper, times(1)).userDtoToUserEntitie(userRequest);
         verify(userMapper, times(1)).userEntititeToUserDto(savedUser);
-        verify(phoneMapper, times(userRequest.getPhone().size())).phoneDtoToPhoneEntitie(any(PhoneDto.class));
-        verify(phoneDao, times(userRequest.getPhone().size())).save(any(Phone.class));
     }
 
     @Test
@@ -107,8 +95,6 @@ class UserServiceImplTest {
             return savedUser;
         });
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
-        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
-        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
@@ -138,7 +124,6 @@ class UserServiceImplTest {
         verify(userDao, never()).saveAndFlush(any(User.class));
         verify(userMapper, never()).userDtoToUserEntitie(any(UserRequest.class));
         verify(userMapper, never()).userEntititeToUserDto(any(User.class));
-        verify(phoneDao, never()).save(any(Phone.class));
     }
 
     @Test
@@ -190,8 +175,6 @@ class UserServiceImplTest {
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
         when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
-        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
-        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
@@ -209,8 +192,6 @@ class UserServiceImplTest {
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
         when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
-        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
-        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
@@ -227,8 +208,6 @@ class UserServiceImplTest {
         when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
         when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
-        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
-        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
@@ -238,22 +217,35 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("Debería guardar teléfonos asociados al usuario")
-    void shouldSavePhonesAssociatedToUser() {
+    @DisplayName("Debería establecer relación de teléfonos con el usuario")
+    void shouldSetPhoneUserRelationship() {
+        
+        User userWithPhones = createUserEntity();
+        List<Phone> phones = new ArrayList<>();
+        Phone phone = createPhoneEntity();
+        phone.setUser(null); // Inicialmente sin usuario
+        phones.add(phone);
+        userWithPhones.setPhones(phones);
         
         when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
-        when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
-        when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
+        when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userWithPhones);
+        when(userDao.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            if (user.getPhones() != null && !user.getPhones().isEmpty()) {
+                user.getPhones().forEach(p -> {
+                    assertNotNull(p.getUser(), "El teléfono debe tener una referencia al usuario");
+                    assertEquals(user.getId(), p.getUser().getId(), "El teléfono debe referenciar al usuario correcto");
+                });
+            }
+            return savedUser;
+        });
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
-        when(phoneMapper.phoneDtoToPhoneEntitie(any(PhoneDto.class))).thenReturn(createPhoneEntity());
-        when(phoneDao.save(any(Phone.class))).thenReturn(createPhoneEntity());
 
         
         userService.createUser(userRequest);
 
         
-        verify(phoneMapper, times(userRequest.getPhone().size())).phoneDtoToPhoneEntitie(any(PhoneDto.class));
-        verify(phoneDao, times(userRequest.getPhone().size())).save(any(Phone.class));
+        verify(userDao, times(1)).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -261,10 +253,13 @@ class UserServiceImplTest {
     void shouldCreateUserWithoutPhonesWhenListIsEmpty() {
         
         UserRequest requestWithoutPhones = createValidUserRequest();
-        requestWithoutPhones.setPhone(new ArrayList<>());
+        requestWithoutPhones.setPhones(new ArrayList<>());
+        
+        User userWithoutPhones = createUserEntity();
+        userWithoutPhones.setPhones(new ArrayList<>());
         
         when(userDao.findByEmail(anyString())).thenReturn(Optional.empty());
-        when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userEntity);
+        when(userMapper.userDtoToUserEntitie(any(UserRequest.class))).thenReturn(userWithoutPhones);
         when(userDao.saveAndFlush(any(User.class))).thenReturn(savedUser);
         when(userMapper.userEntititeToUserDto(any(User.class))).thenReturn(userResponse);
 
@@ -275,8 +270,6 @@ class UserServiceImplTest {
         assertNotNull(result);
         verify(userDao, times(1)).findByEmail(requestWithoutPhones.getEmail());
         verify(userDao, times(1)).saveAndFlush(any(User.class));
-        verify(phoneMapper, never()).phoneDtoToPhoneEntitie(any(PhoneDto.class));
-        verify(phoneDao, never()).save(any(Phone.class));
     }
 
     private UserRequest createValidUserRequest() {
@@ -292,7 +285,7 @@ class UserServiceImplTest {
         
         List<PhoneDto> phones = new ArrayList<>();
         phones.add(phoneDto);
-        request.setPhone(phones);
+        request.setPhones(phones);
         
         return request;
     }
@@ -326,7 +319,7 @@ class UserServiceImplTest {
         response.setCreated("2024-01-01T00:00:00Z");
         response.setModified("2024-01-01T00:00:00Z");
         response.setLastLogin("2024-01-01T00:00:00Z");
-        response.setIsActive("true");
+        response.setIsActive(true);
         return response;
     }
 

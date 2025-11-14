@@ -13,7 +13,7 @@ import org.smartjob.exceptions.SmartJobException;
 import org.smartjob.models.UserRequest;
 import org.smartjob.models.UserResponse;
 import org.smartjob.services.UserService;
-import org.smartjob.util.UserExceptionHandlerController;
+import org.smartjob.exceptions.UserExceptionHandlerController;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -163,7 +163,7 @@ class UserControllerTest {
         
         List<PhoneDto> phones = new ArrayList<>();
         phones.add(phoneDto);
-        request.setPhone(phones);
+        request.setPhones(phones);
         
         return request;
     }
@@ -175,7 +175,7 @@ class UserControllerTest {
         response.setCreated("2024-01-01T00:00:00Z");
         response.setModified("2024-01-01T00:00:00Z");
         response.setLastLogin("2024-01-01T00:00:00Z");
-        response.setIsActive("true");
+        response.setIsActive(true);
         return response;
     }
 }

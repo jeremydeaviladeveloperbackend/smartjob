@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.smartjob.dto.PhoneDto;
+
+import java.util.List;
 
 /**
  * Modelo de respuesta para operaciones de usuario.
@@ -40,8 +43,18 @@ public class UserResponse {
     
     @Schema(description = "Indica si el usuario está activo", example = "true")
     @JsonProperty("isactive")
-    private String isActive;
+    private Boolean isActive;
 
     @Schema(description = "Mensaje adicional (opcional)")
     private String mensaje;
+
+    @Schema(description = "Nombre del usuario")
+    private String name;
+
+    @Schema(description = "Email del usuario")
+    private String email;
+
+    @Schema(description = "Email del usuario")
+    private List<PhoneDto> phones;
+
 }

@@ -1,15 +1,11 @@
 package org.smartjob.services;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.smartjob.dao.PhoneDao;
 import org.smartjob.dao.UserDao;
 import org.smartjob.dao.entities.Phone;
 import org.smartjob.dao.entities.User;
-import org.smartjob.dao.mapper.PhoneMapper;
 import org.smartjob.dao.mapper.UserMapper;
-import org.smartjob.dto.PhoneDto;
 import org.smartjob.exceptions.ExistentEntityException;
 import org.smartjob.exceptions.SmartJobException;
 import org.smartjob.models.UserRequest;
@@ -17,8 +13,8 @@ import org.smartjob.models.UserResponse;
 import org.smartjob.util.UtilitiesSmartJob;
 import org.springframework.stereotype.Service;
 
-import javax.validation.ValidationException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,9 +34,7 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserDao userDao;
-    private final PhoneDao phoneDao;
     private final UserMapper userMapper;
-    private final PhoneMapper phoneMapper;
 
     /**
      * {@inheritDoc}
@@ -52,21 +46,24 @@ public class UserServiceImpl implements UserService {
      * @param userRequest Información del usuario a crear
      * @return UserResponse con los datos del usuario creado
      * @throws ExistentEntityException si el email ya existe
-     * @throws SmartJobException si ocurre un error general
+     * @throws SmartJobException       si ocurre un error general
      */
     @Override
-//    @Transactional
     public UserResponse createUser(UserRequest userRequest) {
         try {
             log.debug("Iniciando creación de usuario para email: {}", userRequest.getEmail());
-            
+            UUID uuid = UUID.randomUUID();
             // Validar que el email no exista
             this.validateIfMailExist(userRequest.getEmail());
-            
-            // Mapear UserRequest a entidad User
+
             User user = this.userMapper.userDtoToUserEntitie(userRequest);
-            
-            // Establecer valores por defecto
+            user.setId(uuid);
+            List<Phone> phones = user.getPhones();
+            phones.forEach(phone -> phone.setUser(user));
+
+            user.setPhones(phones);
+
+            // Establecer valores
             user.setIsactive(true);
             user.setToken(UUID.randomUUID());
             user.setCreated(Instant.now());
@@ -75,28 +72,16 @@ public class UserServiceImpl implements UserService {
             user.setName(userRequest.getName());
             user.setEmail(userRequest.getEmail());
             user.setLastLogin(user.getCreated());
-            
-            User savedUser = this.userDao.saveAndFlush(user);
 
-            for (PhoneDto phone : userRequest.getPhone()) {
-                phone.setUserId(user.getId());
-                phone.setCitycode(phone.getCitycode());
-                phone.setCountrycode(phone.getCountrycode());
-                phone.setNumber(phone.getNumber());
-                var tmp = phoneMapper.phoneDtoToPhoneEntitie(phone);
-                User tmpUser = new User();
-                tmpUser.setId(savedUser.getId());
-                tmp.setUser(tmpUser);
-                phoneDao.save(tmp);
-            }
+            User savedUser = this.userDao.saveAndFlush(user);
 
             log.debug("Usuario guardado con ID: {}", savedUser.getId());
 
             UserResponse response = this.userMapper.userEntititeToUserDto(savedUser);
-            
+
             log.info("Usuario creado exitosamente con ID: {}", response.getId());
             return response;
-            
+
         } catch (ExistentEntityException e) {
             log.warn("Error al crear usuario: {}", e.getMessage());
             throw new SmartJobException(e.getMessage());
@@ -110,7 +95,7 @@ public class UserServiceImpl implements UserService {
     /**
      * Valida si un email ya existe en el sistema.
      * <p>
-     * Este método consulta la base de datos para verificar si ya existe
+     * Este metodo consulta la base de datos para verificar si ya existe
      * un usuario con el email proporcionado.
      * </p>
      *

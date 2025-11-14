@@ -28,6 +28,7 @@ import java.util.List;
 public class UserRequest {
     
     @Schema(description = "Nombre del usuario", example = "Juan Pérez")
+    @NotBlank(message = "name no puede estar vacío")
     private String name;
     
     @Schema(description = "Email del usuario (debe ser único)", example = "juan.perez@example.com", required = true)
@@ -39,7 +40,7 @@ public class UserRequest {
     
     @Schema(description = "Lista de teléfonos asociados al usuario")
     @Valid
-    private List<PhoneDto> phone;
+    private List<PhoneDto> phones;
     
     /**
      * Contraseña del usuario.
