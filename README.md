@@ -28,10 +28,21 @@ SmartJob es una aplicación Spring Boot que proporciona una API REST para la ges
 ## ⚙️ Configuración Inicial
 
 ### Configurar Java 17 en Gradle
+Antes de ejecutar el proyecto, es necesario configurar Gradle para que use Java 17.
 
-Antes de ejecutar el proyecto, es necesario configurar Gradle para que use Java 17. 
+
+- IntelliJ: File > Project Structure > Project SDK > Selecciona Java 17
+
+
+- Eclipse: Window > Preferences > Java > Installed JREs > Add Java 17
+
+
+- VS Code: Configura java.configuration.runtimes en settings.json
+
+
 
 **Crea o edita el archivo `gradle.properties` en la raíz del proyecto** y agrega la siguiente configuración:
+
 
 ```properties
 # Habilitar toolchain de Java
